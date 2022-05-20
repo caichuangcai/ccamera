@@ -1,0 +1,71 @@
+plugins {
+    id 'com.android.application'
+}
+
+def platformVersion = 21
+
+android {
+    compileSdkVersion 30
+    buildToolsVersion "30.0.0"
+
+    defaultConfig {
+        applicationId "com.we.ccamera"
+        minSdkVersion 23
+        targetSdkVersion 30
+        versionCode 1
+        versionName "1.0"
+
+        externalNativeBuild {
+            cmake {
+                cppFlags '-std=c++11', "-D__STDC_CONSTANT_MACROS"
+                arguments "-DANDROID_PLATFORM_LEVEL=${platformVersion}", '-DANDROID_TOOLCHAIN=clang'
+            }
+            ndk {
+                abiFilters "armeabi-v7a"
+            }
+        }
+    }
+
+    buildTypes {
+        release {
+            minifyEnabled false
+            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
+        }
+    }
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_1_8
+        targetCompatibility JavaVersion.VERSION_1_8
+    }
+
+    buildFeatures {
+        viewBinding true
+    }
+
+    externalNativeBuild {
+        cmake {
+            path "src/main/cpp/CMakeLists.txt"
+        }
+    }
+
+    sourceSets {
+        main {
+            jniLibs.srcDirs = ['src/main/libs']
+        }
+    }
+
+}
+
+dependencies {
+
+    implementation 'androidx.appcompat:appcompat:1.2.0'
+    implementation 'com.google.android.material:material:1.2.1'
+    implementation 'androidx.constraintlayout:constraintlayout:2.0.1'
+
+    // CameraX core library
+    implementation "androidx.camera:camera-core:1.0.0-rc03"
+    // CameraX Camera2 extensions
+    implementation "androidx.camera:camera-camera2:1.0.0-rc03"
+    // CameraX Lifecycle library
+    implementation "androidx.camera:camera-lifecycle:1.0.0-rc03"
+
+}
