@@ -1,7 +1,3 @@
-//
-// Created by CainHuang on 2019/8/17.
-//
-
 #ifndef YUVDATA_H
 #define YUVDATA_H
 

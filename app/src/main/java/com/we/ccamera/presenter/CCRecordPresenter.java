@@ -17,17 +17,15 @@ import java.io.FileOutputStream;
 public class CCRecordPresenter implements OnSurfaceTextureListener,
         OnFrameAvailableListener, PreviewCallback, FFAudioRecorder.OnRecordCallback  {
 
+    private final String TAG = CCRecordPresenter.class.getSimpleName();
+
     private final ICameraController cameraController;
 
     private CCMediaRecorder mediaRecorder;
-    //private CCAudioRecorder audioRecorder;
 
     private FFAudioRecorder mFFAudioRecorder;
 
-
     private MainActivity context;
-
-    private Handler mHandler;
 
     private volatile boolean mIsRecording = false;
 
@@ -39,8 +37,6 @@ public class CCRecordPresenter implements OnSurfaceTextureListener,
         mFFAudioRecorder = new FFAudioRecorder();
         mFFAudioRecorder.setOnRecordCallback(this);
         mFFAudioRecorder.setSampleFormat(AudioFormat.ENCODING_PCM_16BIT);
-
-        mHandler = new Handler(Looper.getMainLooper());
 
         cameraController.setOnFrameAvailableListener(this);
         cameraController.setOnPreviewCallback(this);
@@ -58,13 +54,12 @@ public class CCRecordPresenter implements OnSurfaceTextureListener,
         if(!mIsRecording) {
             return ;
         }
-        //Log.e("CCamera", "onRecordSample === data.len: "+data.length);
         mediaRecorder.recordAudioFrame(data, data.length);
     }
 
     @Override
     public void onRecordFinish() {
-        Log.e("CCamera", " == onRecordFinish");
+        Log.d(TAG, " == onRecordFinish");
     }
 
     public void startRecord() {
@@ -82,7 +77,7 @@ public class CCRecordPresenter implements OnSurfaceTextureListener,
 
     @Override
     public void onRecordStart() {
-        Log.e("CCamera", " == onRecordStart");
+        Log.d(TAG, " == onRecordStart");
     }
 
     @Override
@@ -101,23 +96,6 @@ public class CCRecordPresenter implements OnSurfaceTextureListener,
             return ;
         }
         mediaRecorder.recordVideoFrame(cCameraBuffer.buffer, cCameraBuffer.buffer.length, cCameraBuffer.frameWidth, cCameraBuffer.frameHeight);
-    }
-
-    boolean flag = false;
-    private void writeBuffer(byte[] data) {
-        if(flag) {
-            return ;
-        }
-        flag = true;
-        try {
-            File file = new File("/storage/emulated/0/1/ccc.yuv");
-            FileOutputStream outputStream = new FileOutputStream(file);
-            outputStream.write(data);
-            outputStream.flush();
-            outputStream.close();
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
     }
 
     public void onResume() {

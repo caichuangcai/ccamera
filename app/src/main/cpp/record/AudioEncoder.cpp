@@ -1,7 +1,3 @@
-//
-// Created by Administrator on 2022/1/21.
-//
-
 #include "AudioEncoder.h"
 
 AudioEncoder::AudioEncoder() {
@@ -21,8 +17,6 @@ void AudioEncoder::createEncoder() {
         return ;
     }
 
-    //LOGE("createEncoder  name:%s, id:%d", encoder->name, encoder->id);
-
     pCodec = encoder;
     // 创建编码上下文
     pCodecCtx = avcodec_alloc_context3(encoder);
@@ -31,10 +25,6 @@ void AudioEncoder::createEncoder() {
         LOGE("Failed to allocate the encoder context");
         return ;
     }
-
-    /*if((pFormatCtx->oformat->flags & AVFMT_GLOBALHEADER)) {
-        pCodecCtx->flags |= AV_CODEC_FLAG_GLOBAL_HEADER;
-    }*/
 
     pStream = avformat_new_stream(pFormatCtx, encoder);
     if (!pStream) {
@@ -67,22 +57,21 @@ void AudioEncoder::openEncoder(std::map<std::string, std::string> mEncodeOptions
     // 打开编码器
     int ret = avcodec_open2(pCodecCtx, pCodec, NULL);
     if (ret < 0) {
+        LOGE("AudioEncoder openEncoder fail, ret: %s, %d", av_err2str(ret), ret);
         return ;
     }
 
     // 将编码器参数复制到媒体流中
-    ret = avcodec_parameters_from_context(pStream->codecpar, pCodecCtx);
-    if (ret < 0) {
-        LOGE("Failed to copy encoder parameters to video stream");
-        return ;
-    }
-
+    avcodec_parameters_from_context(pStream->codecpar, pCodecCtx);
 }
 
 AVCodecContext* AudioEncoder::getContext() {
     return pCodecCtx;
 }
 
+/**
+ * 音频编码
+ * */
 int AudioEncoder::encodeFrame(AVFrame *frame) {
     int ret = 0;
 
@@ -102,7 +91,6 @@ int AudioEncoder::encodeFrame(AVFrame *frame) {
         }
         else if (ret < 0) {
             LOGE("Failed to call avcodec_receive_packet: %s, type: %s", av_err2str(ret), "Video");
-            //av_packet_unref(&packet);
             return ret;
         }
 
@@ -113,16 +101,11 @@ int AudioEncoder::encodeFrame(AVFrame *frame) {
         ret = av_interleaved_write_frame(pFormatCtx, vPacket);
         if (ret < 0) {
             LOGE("Failed to call av_interleaved_write_frame: %s, type: %s", av_err2str(ret), "Video");
-            //av_packet_unref(&packet);
             return ret;
         }
         LOGE("write packet: type:%s, pts: %lld, s: %f", "Audio", vPacket->pts, vPacket->pts * av_q2d(pStream->time_base));
     }
-
-    //av_packet_unref(&packet);
-    ret = ret == AVERROR_EOF ? 1 : 0;
-    //LOGE("Audio encode frame  ret:%s", ret?"true":"false");
-    return ret;
+    return ret == AVERROR_EOF ? 1 : 0;
 }
 
 void AudioEncoder::closeEncoder() {

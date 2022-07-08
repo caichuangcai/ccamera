@@ -1,7 +1,3 @@
-//
-// Created by CainHuang on 2019/8/24.
-//
-
 #include "YuvConvertor.h"
 
 YuvConvertor::YuvConvertor() {
@@ -22,13 +18,7 @@ void YuvConvertor::reset() {
     mCropWidth = 0;
     mCropHeight = 0;
     mRotationMode = libyuv::kRotate0;
-    mScaleWidth = 0;
-    mScaleHeight = 0;
-    mMirror = false;
-
     pCropData = nullptr;
-    pScaleData = nullptr;
-    pMirrorData = nullptr;
 }
 
 /**
@@ -40,15 +30,6 @@ void YuvConvertor::release() {
         pCropData = nullptr;
     }
 
-    if (pScaleData != nullptr) {
-        delete pScaleData;
-        pScaleData = nullptr;
-    }
-
-    if (pMirrorData != nullptr) {
-        delete pMirrorData;
-        pMirrorData = nullptr;
-    }
     reset();
 }
 
@@ -62,7 +43,6 @@ void YuvConvertor::setInputParams(int width, int height, int pixelFormat) {
     mWidth = width;
     mHeight = height;
     mPixelFormat = pixelFormat;
-    //LOGD("input video params:[%d, %d, %s]", width, height, av_get_pix_fmt_name(getPixelFormat((PixelFormat)pixelFormat)));
 }
 
 /**
@@ -105,41 +85,18 @@ void YuvConvertor::setRotate(int degree) {
 }
 
 /**
- * 设置是否缩放
- * @param width
- * @param height
- */
-void YuvConvertor::setScale(int width, int height) {
-    mScaleWidth = width;
-    mScaleHeight = height;
-}
-
-/**
- * 设置是否镜像
- * @param mirror
- */
-void YuvConvertor::setMirror(bool mirror) {
-    mMirror = mirror;
-}
-
-/**
  * 准备转换器
  * @return
  */
 int YuvConvertor::prepare() {
 
-    LOGE("YuvConvertor  prepare   mRotationMode: %d", mRotationMode);
-
     if ((mCropWidth == 0 || mCropHeight == 0)
         && (mRotationMode == libyuv::kRotate0)
-        && (mScaleWidth == 0 && mScaleHeight == 0) &&!mMirror
         && (mPixelFormat == 4)) {
-        LOGE("YuvConvertor  prepare   mNeedConvert: false");
+
         mNeedConvert = false;
         return -1;
     }
-
-    LOGE("YuvConvertor  prepare  true");
 
     mNeedConvert = true;
 
@@ -176,41 +133,7 @@ int YuvConvertor::prepare() {
         pCropData = new YuvData();
         pCropData->alloc(width, height);
     }
-
-    // 创建缩放yuv缓冲对象
-    if (mScaleWidth > 0 && mScaleHeight > 0) {
-        pScaleData = new YuvData();
-        pScaleData->alloc(mScaleWidth, mScaleHeight);
-    }
-
-    // 创建镜像yuv缓冲对象
-    if (mMirror) {
-        pMirrorData = new YuvData();
-        pMirrorData->alloc(getOutputWidth(), getOutputHeight());
-    }
-
     return 1;
-}
-
-void YuvConvertor::writeData(uint8_t *data, int len) {
-    if(flag) {
-        return ;
-    }
-    flag = count > 40;
-
-    char name[32];
-    //char* name = "/storage/emulated/0/1/ccc%d.yuv";
-    sprintf(name, "/storage/emulated/0/1/ccc%d.yuv", count);
-    FILE *file = fopen(name, "w");
-    if(file == nullptr) {
-        LOGE("file create fail");
-        return ;
-    }
-    int ret = fwrite(data, 1, len, file);
-    LOGE("YuvConvertor  writeData  ret: %d", ret);
-    fclose(file);
-
-    count++;
 }
 
 /**
@@ -237,18 +160,12 @@ int YuvConvertor::convert(AVMediaData *mediaData) {
         return -1;
     }
 
-    //LOGE("convert mediaData.width: %d, mediaData.height: %d, mCropWidth: %d, mCropHeight: %d", mediaData->width,mediaData->height, mCropWidth, mCropHeight);
-
-    //LOGE("convert  mediaData->width: %d, mediaData->height: %d, mCropWidth: %d, mCropHeight: %d, mRotationMode: %d",mediaData->width, mediaData->height, mCropWidth, mCropHeight, mRotationMode);
-
     int ret = ConvertToI420(mediaData->image, (size_t) mediaData->length,
                         pCropData->dataY, pCropData->lineSizeY,
                         pCropData->dataU, pCropData->lineSizeU,
                         pCropData->dataV, pCropData->lineSizeV,
                         mCropX, mCropY, mediaData->width, mediaData->height, mCropWidth, mCropHeight,
                         mRotationMode, libyuv::FOURCC_NV21);
-
-    //LOGE("convert   ss ");
 
     if (ret < 0) {
         LOGE("Failed to call ConvertToI420: %d", ret);
@@ -260,61 +177,6 @@ int YuvConvertor::convert(AVMediaData *mediaData) {
 
     fillMediaData(mediaData, output, outputWidth, outputHeight);
 
-    //writeData(mediaData->image, mediaData->length);
-
-    //writeData(mediaData->image, mediaData->length);
-
-    //LOGE("YuvConvertor convert end   mediaData->width: %d, height: %d",mediaData->width, mediaData->height);
-
-    return 0;
-}
-
-/**
- * 缩放处理
- * @param src
- * @param srcW
- * @param srcH
- * @return
- */
-int YuvConvertor::scale(YuvData *src, int srcW, int srcH) {
-    int ret;
-    ret = libyuv::I420Scale(src->dataY, src->lineSizeY,
-                            src->dataU, src->lineSizeU,
-                            src->dataV, src->lineSizeV,
-                            srcW, srcH,
-                            pScaleData->dataY, pScaleData->lineSizeY,
-                            pScaleData->dataU, pScaleData->lineSizeU,
-                            pScaleData->dataV, pScaleData->lineSizeV,
-                            mScaleWidth, mScaleHeight,
-                            libyuv::kFilterBox);
-    if (ret < 0) {
-        LOGE("Failed to call I420Scale: %d", ret);
-        return ret;
-    }
-
-    return 0;
-}
-
-/**
- * 镜像处理
- * @param src
- * @param srcW
- * @param srcH
- * @return
- */
-int YuvConvertor::mirror(YuvData *src, int srcW, int srcH) {
-    int ret;
-    ret = libyuv::I420Mirror(src->dataY, src->lineSizeY,
-                             src->dataU, src->lineSizeU,
-                             src->dataV, src->lineSizeV,
-                             pMirrorData->dataY, pMirrorData->lineSizeY,
-                             pMirrorData->dataU, pMirrorData->lineSizeU,
-                             pMirrorData->dataV, pMirrorData->lineSizeV,
-                             srcW, srcH);
-    if (ret < 0) {
-        LOGE("Failed to call I420Mirror: %d", ret);
-        return ret;
-    }
     return 0;
 }
 
@@ -342,30 +204,3 @@ void YuvConvertor::fillMediaData(AVMediaData *model, YuvData *src, int srcW, int
     model->pixelFormat = 4;
     model->type = MediaVideo;
 }
-
-/**
- * 获取输出宽度
- * @return
- */
-int YuvConvertor::getOutputWidth() {
-    int width = mScaleWidth;
-    if (width == 0) {
-        width = (mRotationMode == libyuv::kRotate0 || mRotationMode == libyuv::kRotate180)
-                ? mCropWidth : mCropHeight;
-    }
-    return width;
-}
-
-/**
- * 获取输出高度
- * @return
- */
-int YuvConvertor::getOutputHeight() {
-    int height = mScaleHeight;
-    if (height == 0) {
-        height = (mRotationMode == libyuv::kRotate0 || mRotationMode == libyuv::kRotate180)
-                 ? mCropHeight : mCropWidth;
-    }
-    return height;
-}
-

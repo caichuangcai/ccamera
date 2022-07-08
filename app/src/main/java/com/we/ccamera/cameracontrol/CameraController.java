@@ -137,8 +137,6 @@ public class CameraController implements ICameraController {
         private PreviewCallback previewCallback;
         private CCameraBuffer buffer;
 
-        private final boolean VERBOSE = false;
-
         public PreviewCallbackAnalyzer(PreviewCallback callback) {
             this.previewCallback = callback;
             this.buffer = new CCameraBuffer();
@@ -147,12 +145,6 @@ public class CameraController implements ICameraController {
         @SuppressLint("UnsafeExperimentalUsageError")
         @Override
         public void analyze(@NonNull ImageProxy image) {
-            long start = System.currentTimeMillis();
-            if (VERBOSE) {
-                Log.d("Image", "analyze: timestamp - " + image.getImageInfo().getTimestamp() + ", " +
-                        "orientation - " + image.getImageInfo().getRotationDegrees() + ", imageFormat" +
-                        " - " + image.getFormat());
-            }
 
             if(previewCallback != null && image.getImage() != null)
             {
@@ -163,10 +155,6 @@ public class CameraController implements ICameraController {
             }
 
             image.close();
-
-            if (VERBOSE) {
-                Log.d("Image", "convert cost time - " + (System.currentTimeMillis() - start));
-            }
         }
 
     }

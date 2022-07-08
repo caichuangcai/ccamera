@@ -1,7 +1,3 @@
-//
-// Created by CainHuang on 2020/1/11.
-//
-
 #include "Resampler.h"
 
 Resampler::Resampler() {
@@ -53,7 +49,6 @@ void Resampler::setInput(int sample_rate, int channels, AVSampleFormat sample_fm
     mInChannels = av_sample_fmt_is_planar(sample_fmt) ? channels : 1;
     mInSampleFormat = sample_fmt;
     mInChannelLayout = av_get_default_channel_layout(mInChannels);
-    //LOGE("Resampler  mInSampleRate: %d,  mInChannels: %d, mInSample_fmt: %s, mInChannelLayout:%d",mInSampleRate, mInChannels, av_get_sample_fmt_name(sample_fmt), mInChannelLayout);
 }
 
 /**
@@ -175,38 +170,11 @@ int Resampler::resample(const uint8_t *data, AVCodecContext *codecCtx) {
 }
 
 /**
- * 对音频帧进行重采样处理
- * @param frame
- * @return
- */
-/*int Resampler::resample(AVFrame *frame, uint8 **converted_data) {
-    if (!frame) {
-        return -1;
-    }
-    int ret = 0;
-    ret = swr_convert(pSampleConvertCtx, converted_data, frame->nb_samples,
-                      (const uint8_t **)frame->extended_data, frame->nb_samples);
-    if (ret < 0) {
-        LOGE("swr_convert error: %s", av_err2str(ret));
-        return -1;
-    }
-    return 0;
-}*/
-
-/**
  * get resampled frame
  * @return
  */
 AVFrame* Resampler::getConvertedFrame() {
     return mSampleFrame;
-}
-
-int Resampler::getInputSampleRate() {
-    return mInSampleRate;
-}
-
-int Resampler::getInputChannels() {
-    return mInChannels;
 }
 
 AVSampleFormat Resampler::getInputSampleFormat() {

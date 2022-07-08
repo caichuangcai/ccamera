@@ -75,7 +75,6 @@ extern "C" {
             return ;
         }
 
-
         uint8_t *yuvData = (uint8_t *) malloc((size_t) data_length);
 
         if (yuvData == nullptr) {

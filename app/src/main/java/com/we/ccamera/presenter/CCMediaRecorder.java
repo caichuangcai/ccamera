@@ -20,10 +20,7 @@ public class CCMediaRecorder {
     }
 
     public void init(int width, int height) {
-        mHandler.post(()->{
-            Log.e(TAG, "init  tid: "+Thread.currentThread().getId());
-            nativeInit(width, height);
-        });
+        mHandler.post(()->nativeInit(width, height));
     }
 
     public void setVideoParam(int width, int height, int frameRate, int pixelFormat, long maxBitRate, int quality) {

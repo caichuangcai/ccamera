@@ -31,15 +31,8 @@ public:
     // convert data
     int resample(const uint8_t *data, AVCodecContext *codecCtx);
 
-    // convert data
-    //int resample(AVFrame *frame, uint8 **converted_data);
-
     // get converted frame
     AVFrame *getConvertedFrame();
-
-    int getInputSampleRate();
-
-    int getInputChannels();
 
     AVSampleFormat getInputSampleFormat();
 

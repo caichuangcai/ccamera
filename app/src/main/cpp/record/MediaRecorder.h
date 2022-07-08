@@ -42,7 +42,12 @@ private:
     Mutex mMutex;
     Condition mCondition;
     Thread *mRecordThread = nullptr;
-    SafetyQueue<AVMediaData*> *mFrameQueue = nullptr;
+
+    // 视频数据队列
+    SafetyQueue<AVMediaData*> *mVideoQueue = nullptr;
+    // 音频数据队列
+    SafetyQueue<AVMediaData*> *mAudioQueue = nullptr;
+
     bool mAbortRequest = false; // 停止请求
     bool mStartRequest = false; // 开始录制请求
     bool mExit = false;         // 完成退出标志

@@ -1,7 +1,3 @@
-//
-// Created by Administrator on 2022/4/26.
-//
-
 #ifndef CCAMERA_MEDIAHEADER_H
 #define CCAMERA_MEDIAHEADER_H
 

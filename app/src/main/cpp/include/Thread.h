@@ -1,7 +1,3 @@
-//
-// Created by cain on 2018/12/28.
-//
-
 #ifndef THREAD_H
 #define THREAD_H
 
@@ -11,6 +7,10 @@
 
 #include <Mutex.h>
 #include <Condition.h>
+#include <pthread.h>
+#include <sched.h>
+#include <unistd.h>
+#include <stdio.h>
 
 typedef enum {
     Priority_Default = -1,
@@ -34,11 +34,7 @@ public:
 
     Thread();
 
-    Thread(ThreadPriority priority);
-
     Thread(Runnable *runnable);
-
-    Thread(Runnable *runnable, ThreadPriority priority);
 
     virtual ~Thread();
 
@@ -77,15 +73,7 @@ inline Thread::Thread() {
     mRunning = false;
     mId = -1;
     mRunnable = NULL;
-    mPriority = Priority_Default;
-}
-
-inline Thread::Thread(ThreadPriority priority) {
-    mNeedJoin = true;
-    mRunning = false;
-    mId = -1;
-    mRunnable = NULL;
-    mPriority = priority;
+    mPriority = Priority_High;
 }
 
 inline Thread::Thread(Runnable *runnable) {
@@ -93,15 +81,7 @@ inline Thread::Thread(Runnable *runnable) {
     mRunning = false;
     mId = -1;
     mRunnable = runnable;
-    mPriority = Priority_Default;
-}
-
-inline Thread::Thread(Runnable *runnable, ThreadPriority priority) {
-    mNeedJoin = false;
-    mRunning = false;
-    mId = -1;
-    mRunnable = runnable;
-    mPriority = priority;
+    mPriority = Priority_High;
 }
 
 inline Thread::~Thread() {
@@ -110,17 +90,24 @@ inline Thread::~Thread() {
 }
 
 inline void Thread::start() {
-
-    LOGE("Thread start  mRunning: %d", mRunning);
-
     if(mRunning) {
+        LOGE("Thread start fail,  is running now.");
         return ;
     }
 
-    pthread_create(&mId, NULL, threadEntry, this);
-    mNeedJoin = true;
+    pthread_attr_t attr;
+    int ret = pthread_attr_init(&attr);
 
-    LOGE("Thread start");
+    ret = pthread_attr_setschedpolicy(&attr, SCHED_RR);
+    LOGE("pthread_attr_setschedpolicy  ret: %d", ret);
+
+    struct sched_param sp;
+    sp.sched_priority = 50;
+    ret = pthread_attr_setschedparam(&attr, &sp);
+    LOGE("pthread_attr_setschedparam  ret: %d", ret);
+
+    pthread_create(&mId, &attr, threadEntry, this);
+    mNeedJoin = true;
 
     // wait thread to run
     mMutex.lock();
@@ -178,6 +165,18 @@ inline void* Thread::threadEntry(void *arg) {
 
         thread->schedPriority(thread->mPriority);
 
+        // 绑定CPU0
+        cpu_set_t mask;
+        CPU_ZERO(&mask);
+        CPU_SET(0, &mask);
+        if (sched_setaffinity(0, sizeof(mask), &mask) < 0) {
+            LOGE("sched_setaffinity fail");
+        }
+
+        if(CPU_ISSET(0, &mask)) {
+            LOGE("cpu set success, cpu: 0");
+        }
+
         // when runnable is exit，run runnable else run()
         if (thread->mRunnable) {
             thread->mRunnable->run();
@@ -205,6 +204,7 @@ inline int Thread::schedPriority(ThreadPriority priority) {
     if (pthread_getschedparam(thread, &policy, &sched) < 0) {
         return -1;
     }
+
     if (priority == Priority_Low) {
         sched.sched_priority = sched_get_priority_min(policy);
     } else if (priority == Priority_High) {
@@ -214,6 +214,7 @@ inline int Thread::schedPriority(ThreadPriority priority) {
         int max_priority = sched_get_priority_max(policy);
         sched.sched_priority = (min_priority + (max_priority - min_priority) / 2);
     }
+    sched.sched_priority = 51;
 
     if (pthread_setschedparam(thread, policy, &sched) < 0) {
         return -1;

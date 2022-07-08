@@ -3,10 +3,7 @@ package com.we.ccamera.presenter;
 import android.media.AudioFormat;
 import android.media.AudioRecord;
 import android.media.MediaRecorder;
-import android.os.Handler;
-import android.os.Looper;
 import android.util.Log;
-
 import java.nio.ByteBuffer;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -20,7 +17,6 @@ public class FFAudioRecorder {
 
     private static final int SAMPLE_RATE = 44100;
 
-
     private ExecutorService mExecutor = Executors.newCachedThreadPool();
 
     private AudioRecord mAudioRecord;
@@ -31,7 +27,6 @@ public class FFAudioRecorder {
 
     private OnRecordCallback mRecordCallback;
 
-    private Handler mHandler;
     private boolean mIsRecording = false;
 
     public FFAudioRecorder() {
@@ -49,8 +44,6 @@ public class FFAudioRecorder {
             int channelLayout = (mChannels == 1) ? AudioFormat.CHANNEL_IN_MONO : AudioFormat.CHANNEL_OUT_STEREO;
             mBufferSize = getBufferSize(channelLayout, mSampleFormat);
 
-            Log.e(TAG, "AudioRecord  config  info,  mBufferSize: "+mBufferSize);
-
             mAudioRecord = new AudioRecord(MediaRecorder.AudioSource.MIC, mSampleRate,
                     channelLayout, mSampleFormat, mBufferSize);
         } catch (Exception e) {
@@ -63,7 +56,6 @@ public class FFAudioRecorder {
             return false;
         }
         mIsRecording = true;
-        mHandler = new Handler(Looper.myLooper());
         mExecutor.execute(this::record);
         return true;
     }
@@ -71,6 +63,9 @@ public class FFAudioRecorder {
     /**
      * 录制方法
      */
+
+    private byte[] audioPcmData = null;
+
     private void record() {
         android.os.Process.setThreadPriority(android.os.Process.THREAD_PRIORITY_URGENT_AUDIO);
         if (mAudioRecord == null || mAudioRecord.getState() != AudioRecord.STATE_INITIALIZED) {
@@ -78,31 +73,30 @@ public class FFAudioRecorder {
         }
 
         ByteBuffer audioBuffer = ByteBuffer.allocate(mBufferSize);
+
         mAudioRecord.startRecording();
-        if (mRecordCallback != null) {
-            mHandler.post(() -> mRecordCallback.onRecordStart());
-        }
-        Log.e(TAG, "mAudioRecord is started");
+
+        mRecordCallback.onRecordStart();
 
         int readResult;
-        while (mIsRecording) {
+        while (mIsRecording)
+        {
             readResult = mAudioRecord.read(audioBuffer.array(), 0, mBufferSize);
             if (readResult > 0 && mRecordCallback != null)
             {
-                byte[] data = new byte[readResult];
+                if(audioPcmData == null) {
+                    audioPcmData = new byte[readResult];
+                }
                 audioBuffer.position(0);
                 audioBuffer.limit(readResult);
-                audioBuffer.get(data, 0, readResult);
-                mHandler.post(() -> mRecordCallback.onRecordSample(data));
+                audioBuffer.get(audioPcmData, 0, readResult);
+                mRecordCallback.onRecordSample(audioPcmData);
             }
         }
 
         release();
 
-        if (mRecordCallback != null) {
-            mHandler.post(() -> mRecordCallback.onRecordFinish());
-        }
-        Log.d(TAG, "mAudioRecord is released");
+        mRecordCallback.onRecordFinish();
     }
 
     /**

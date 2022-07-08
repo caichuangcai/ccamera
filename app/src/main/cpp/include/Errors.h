@@ -1,7 +1,3 @@
-//
-// Created by cain on 2019/2/2.
-//
-
 #ifndef ERRORS_H
 #define ERRORS_H
 

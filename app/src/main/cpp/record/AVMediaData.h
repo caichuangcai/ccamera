@@ -1,7 +1,3 @@
-//
-// Created by CainHuang on 2019/8/18.
-//
-
 #ifndef AVMEDIADATA_H
 #define AVMEDIADATA_H
 

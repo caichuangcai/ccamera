@@ -1,7 +1,3 @@
-//
-// Created by CainHuang on 2019/8/17.
-//
-
 #include "YuvData.h"
 
 YuvData::YuvData() : dataY(nullptr), dataU(nullptr), dataV(nullptr),

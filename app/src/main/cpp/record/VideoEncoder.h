@@ -24,15 +24,13 @@ public:
 
     // 设置视频参数
     void setVideoParams(int width, int height, AVPixelFormat pixelFormat, int frameRate,
-                        int maxBitRate, std::map<std::string, std::string> metadata);
+                        int maxBitRate);
 
     int encodeFrame(AVFrame *frame);
 
     void closeEncoder();
 
     AVCodecContext* getCodecContext();
-
-    AVRational getStreamTimeBase();
 
 private:
 

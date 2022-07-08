@@ -14,10 +14,6 @@
  * limitations under the License.
  */
 
-//
-// 备注：复制自Android源码中的锁对象
-//
-
 #ifndef CONDITION_H
 #define CONDITION_H
 

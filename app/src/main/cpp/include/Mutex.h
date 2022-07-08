@@ -14,10 +14,6 @@
  * limitations under the License.
  */
 
-//
-// 备注：复制自Android源码中的锁对象
-//
-
 #ifndef MUTEX_H
 #define MUTEX_H
 

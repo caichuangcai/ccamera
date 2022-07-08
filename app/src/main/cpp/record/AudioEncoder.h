@@ -1,7 +1,3 @@
-//
-// Created by Administrator on 2022/1/21.
-//
-
 #ifndef CCAMERA_AUDIOENCODER_H
 #define CCAMERA_AUDIOENCODER_H
 

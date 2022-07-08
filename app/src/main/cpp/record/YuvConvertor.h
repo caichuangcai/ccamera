@@ -1,7 +1,3 @@
-//
-// Created by CainHuang on 2019/8/24.
-//
-
 #ifndef YUVCONVERTOR_H
 #define YUVCONVERTOR_H
 
@@ -28,23 +24,11 @@ public:
     // 设置旋转角度
     void setRotate(int degree);
 
-    // 设置缩放宽高
-    void setScale(int width, int height);
-
-    // 设置是否镜像
-    void setMirror(bool mirror);
-
     // 准备yuv转换器
     int prepare();
 
     // 转换数据
     int convert(AVMediaData *mediaData);
-
-    // 获取输出宽度
-    int getOutputWidth();
-
-    // 获取输出高度
-    int getOutputHeight();
 
 private:
     // 重置所有参数
@@ -53,16 +37,8 @@ private:
     // 释放所有资源
     void release();
 
-    // 缩放处理
-    int scale(YuvData *src, int srcW, int srcH);
-
-    // 镜像处理
-    int mirror(YuvData *src, int srcW, int srcH);
-
     // 填充媒体数据
     void fillMediaData(AVMediaData *model, YuvData *src, int srcW, int srcH);
-
-    void writeData(uint8_t *data, int len);
 
 private:
 
@@ -76,15 +52,8 @@ private:
     int mCropWidth;
     int mCropHeight;
     libyuv::RotationMode mRotationMode;
-    int mScaleWidth;
-    int mScaleHeight;
-    bool mMirror;
-
-    bool flag = false;
 
     YuvData *pCropData;
-    YuvData *pScaleData;
-    YuvData *pMirrorData;
 
     uint8_t count;
 

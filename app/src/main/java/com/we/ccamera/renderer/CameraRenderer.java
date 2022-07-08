@@ -68,7 +68,6 @@ public class CameraRenderer extends BaseRenderer {
     private void createOESSurfaceTexture() {
         int oesTextureId = createOESTexture();
         surfaceTexture = new SurfaceTexture(oesTextureId);
-        Log.e(TAG, "oesTextureId: "+oesTextureId);
 
         oesTextureListener.onCreateOesTexture(surfaceTexture);
     }

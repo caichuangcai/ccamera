@@ -24,24 +24,13 @@ void MediaMuxer::stopRecord() {
 
 }
 
-void av_log_my_callback(void* ptr, int level, const char* fmt, va_list vl)
-{
-
-    LOGE("av log   %s", fmt);
-}
-
 int MediaMuxer::prepare() {
 
     av_register_all();
 
     avformat_network_init();
 
-    //av_log_set_flags(1);
-    av_log_set_level(AV_LOG_DEBUG);
-    //av_log_set_flags(AV_LOG_SKIP_REPEATED);
-    av_log_set_callback(av_log_my_callback);
-
-    LOGE("MediaMuxer - prepare: %s", outputPath);
+    LOGE("MediaMuxer outputPath: %s", outputPath);
 
     int ret = avformat_alloc_output_context2(&pFormatCtx, nullptr, "flv", outputPath);
 
@@ -79,24 +68,16 @@ int MediaMuxer::prepare() {
     }
 
     mImageBuffer = (uint8_t *) av_malloc((size_t) size);
-
     if (!mImageBuffer) {
         LOGE("Failed to allocate image buffer");
         return -1;
     }
 
-    LOGE("SS %s", mResampler==nullptr?"mResampler is null":"mResampler not null");
-    /*if (mResampler != nullptr) {
-        delete mResampler;
-        mResampler = nullptr;
-    }*/
-
     AVCodecContext *pAudioCodecCtx = audioEncoder->getContext();
     mResampler = new Resampler();
     mResampler->setInput(sampleRate, channels, mSampleFormat, pAudioCodecCtx->time_base);
 
-    LOGE("Audio output info    sample_rate: %d, channel_layout: %llu, sample_fmt: %d, channels: %d, frame_size: %d",
-         pAudioCodecCtx->sample_rate,
+    LOGE("Audio output info    sample_rate: %d, channel_layout: %llu, sample_fmt: %d, channels: %d, frame_size: %d", pAudioCodecCtx->sample_rate,
          pAudioCodecCtx->channel_layout,
          pAudioCodecCtx->sample_fmt,
          pAudioCodecCtx->channels,
@@ -109,9 +90,8 @@ int MediaMuxer::prepare() {
         LOGE("Failed to init audio convertor.");
         return ret;
     }
-    LOGE("audio resampler is ready.....");
+    LOGE("Audio Resampler is ready.....");
 
-    //av_dump_format(pFormatCtx, 0, outputPath, 1);
 
     if (!(pFormatCtx->oformat->flags & AVFMT_NOFILE)) {
         if ((ret = avio_open(&pFormatCtx->pb, outputPath, AVIO_FLAG_WRITE)) < 0) {
@@ -126,10 +106,6 @@ int MediaMuxer::prepare() {
         return ret;
     }
 
-    //avformat_open_input(&pFormatCtx, outputPath, NULL, NULL);
-    //av_dump_format(pFormatCtx, 0, "/storage/emulated/0/1/aaa.txt", 1);
-    //avformat_close_input(&pFormatCtx);
-
     LOGE("MediaMuxer is ready.....");
 
     return 0;
@@ -137,49 +113,38 @@ int MediaMuxer::prepare() {
 
 int MediaMuxer::openVideoEncoder() {
     videoEncoder = new VideoEncoder();
-
     videoEncoder->setFormatContext(pFormatCtx);
     // 创建编码器
     videoEncoder->createEncoder();
     // 设置视频参数
-    videoEncoder->setVideoParams(videoWidth, videoHeight, mPixelFormat, videoFrameRate,0, mVideoMetadata);
+    videoEncoder->setVideoParams(videoWidth, videoHeight, mPixelFormat, videoFrameRate, 0);
     // 打开编码器
     videoEncoder->openEncoder(mEncodeOptions);
-
     videoCodecCtx = videoEncoder->getCodecContext();
-    LOGE("openVideoEncoder   den: %d,  num: %d", videoCodecCtx->time_base.den, videoCodecCtx->time_base.num);
     return 0;
 }
 
 int MediaMuxer::openAudioEncoder() {
     audioEncoder = new AudioEncoder();
-
     audioEncoder->setFormatContext(pFormatCtx);
-
     // 创建编码器
     audioEncoder->createEncoder();
-
+    // 设置音频参数
     audioEncoder->setAudioParams(AUDIO_BIT_RATE, sampleRate, channels);
-
     // 打开编码器
     audioEncoder->openEncoder(mEncodeOptions);
-
     audioCodecCtx = audioEncoder->getContext();
-    LOGE("openAudioEncoder   den: %d,  num: %d", audioCodecCtx->time_base.den, audioCodecCtx->time_base.num);
     return 0;
 }
 
-// 是否编码视频帧
+/***
+ * 判断视频跟音频的时间戳对比，判断编码视频帧还是音频帧
+ * return true：编码视频帧  false：编码音频帧
+ * */
 bool MediaMuxer::encodeVideoNow() {
-    bool flag = av_compare_ts(video_next_pts, videoCodecCtx->time_base,
-                              mResampler->samples_count, audioCodecCtx->time_base) <= 0;
-    //LOGE("MediaMuxer  video_next_pts: %llu, samples_count: %llu, should  %s", video_next_pts, mResampler->samples_count, flag?"true":"false");
-    return flag;
+    return av_compare_ts(video_next_pts, videoCodecCtx->time_base,
+                         mResampler->samples_count, audioCodecCtx->time_base) <= 0;
 }
-
-/*int MediaMuxer::encodeMediaData(AVMediaData *mediaData) {
-    return encodeMediaData(mediaData);
-}*/
 
 int MediaMuxer::encodeMediaData(AVMediaData *mediaData) {
     int ret = 0;
@@ -191,7 +156,7 @@ int MediaMuxer::encodeMediaData(AVMediaData *mediaData) {
     if(isVideo)
     {
         /* check if we want to generate more frames */
-        /*if (av_compare_ts(video_next_pts, videoEncoder->getCodecContext()->time_base,
+        /*if (av_compare_ts(video_next_pts, videoCodecCtx->time_base,
                           10.0, (AVRational){ 1, 1 }) > 0) {
             return 1;
         }*/
@@ -199,7 +164,7 @@ int MediaMuxer::encodeMediaData(AVMediaData *mediaData) {
     }
     else {
         /* check if we want to generate more frames */
-        /*if (av_compare_ts(audio_next_pts, audioEncoder->getContext()->time_base,
+        /*if (av_compare_ts(mResampler->samples_count, audioCodecCtx->time_base,
                           10.0, (AVRational){ 1, 1 }) > 0) {
             return 1;
         }*/
@@ -248,14 +213,6 @@ int MediaMuxer::fillSample(AVMediaData *data) {
 }
 
 /**
- * 设置是否使用时间戳计算pts
- * @param use
- */
-void MediaMuxer::setUseTimeStamp(bool use) {
-
-}
-
-/**
  * 添加编码参数
  * @param key
  * @param value
@@ -276,20 +233,25 @@ void MediaMuxer::setQuality(int quality) {
     mEncodeOptions["crf"] = str;
 }
 
-int MediaMuxer::stop() {
-    int ret = 0;
+/**
+ * 刷新缓冲区
+ * */
+void MediaMuxer::flush() {
+    audioEncoder->encodeFrame(NULL);
+    videoEncoder->encodeFrame(NULL);
+}
 
+/**
+ * 停止录制，写文件尾
+ * */
+int MediaMuxer::stop() {
     // 写入文件尾
-    ret = av_write_trailer(pFormatCtx);
+    int ret = av_write_trailer(pFormatCtx);
     if (ret < 0) {
         LOGE("AVMediaMuxer -Failed to call av_write_trailer: %s", av_err2str(ret));
         return ret;
-    } else {
-        LOGE("AVMediaMuxer - av_write_trailer() success");
     }
-
-    LOGE("AVMediaMuxer - stop");
-
+    LOGE("AVMediaMuxer - av_write_trailer() success");
     return 0;
 }
 

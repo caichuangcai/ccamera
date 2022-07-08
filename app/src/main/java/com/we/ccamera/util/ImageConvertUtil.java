@@ -1,6 +1,5 @@
 package com.we.ccamera.util;
 
-import android.graphics.ImageFormat;
 import android.graphics.Rect;
 import android.media.Image;
 import android.util.Log;
@@ -27,9 +26,6 @@ public class ImageConvertUtil {
             rowData = new byte[planes[0].getRowStride()];
         }
 
-        if (VERBOSE) {
-            Log.d(TAG, "get data from " + planes.length + " planes");
-        }
         int yLength = 0;
         int stride = 1;
         for (int i = 0; i < planes.length; i++) {
@@ -54,13 +50,6 @@ public class ImageConvertUtil {
             ByteBuffer buffer = planes[i].getBuffer();
             int rowStride = planes[i].getRowStride();
             int pixelStride = planes[i].getPixelStride();
-            if (VERBOSE) {
-                Log.e(TAG, "pixelStride " + pixelStride);
-                Log.e(TAG, "rowStride " + rowStride);
-                Log.e(TAG, "width " + width);
-                Log.e(TAG, "height " + height);
-                Log.e(TAG, "buffer size " + buffer.remaining());
-            }
 
             int shift = (i == 0) ? 0 : 1;
             int w = width >> shift;

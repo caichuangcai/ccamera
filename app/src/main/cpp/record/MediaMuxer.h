@@ -36,9 +36,6 @@ public:
     // 设置质量系数
     void setQuality(int quality);
 
-    // 设置是否使用时间戳形式
-    void setUseTimeStamp(bool use);
-
     int prepare();
 
     int encodeMediaData(AVMediaData *mediaData);
@@ -48,6 +45,8 @@ public:
     int fillImage(AVMediaData *data);
 
     int fillSample(AVMediaData *data);
+
+    void flush();
 
     int stop();
 
@@ -66,22 +65,17 @@ private:
     char* outputPath;
     int videoWidth             = 720;    // 分辨率宽度
     int videoHeight            = 1280;   // 分辨率高度
-    int videoFrameRate         = 25;     // 视频帧率
+    int videoFrameRate         = 20;     // 视频帧率
     AVPixelFormat mPixelFormat = AV_PIX_FMT_YUV420P;     // 像素格式
 
     int sampleRate    = 44100;         // 音频采样率
     int channels      = 1;      // 声道数
     AVSampleFormat mSampleFormat = AV_SAMPLE_FMT_S16;   // 采样格式
 
-    //int64_t mStartPts;       // 开始pts
-    //int64_t mLastPts;        // 上一帧pts
-    //int mImageCount;         // 视频数量
-    uint64_t video_next_pts = 0;
+    uint64_t video_next_pts = 0;    // 视频帧数
 
     AVFrame *mImageFrame;           // 视频缓冲帧
     uint8_t *mImageBuffer;          // 视频缓冲区
-
-    //bool mUseTimeStamp;             // 是否使用时间戳计算pts
 
     AVFormatContext *pFormatCtx = nullptr;    // 上下文
     VideoEncoder *videoEncoder = nullptr;

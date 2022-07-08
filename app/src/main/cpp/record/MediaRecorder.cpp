@@ -1,7 +1,3 @@
-//
-// Created by Administrator on 2022/4/25.
-//
-
 #include "MediaRecorder.h"
 
 MediaRecorder::MediaRecorder() : mAbortRequest(true), mExit(true) {
@@ -20,63 +16,48 @@ void MediaRecorder::setVideoInfo(int width, int height) {
 void MediaRecorder::prepare() {
 
     if(mediaMuxer == nullptr) {
-        LOGE("MediaMuxer is working");
+        LOGE("MediaRecorder prepare fail, mediaMuxer is null");
         return ;
     }
 
-    LOGE("MediaRecorder prepare   av_version_info: %s", av_version_info());
+    LOGE("FFmpeg  av_version_info: %s", av_version_info());
 
-    mFrameQueue = new SafetyQueue<AVMediaData*>();
+    mVideoQueue = new SafetyQueue<AVMediaData*>();
+
+    mAudioQueue = new SafetyQueue<AVMediaData*>();
 
     mYuvConvertor = new YuvConvertor();
     mYuvConvertor->setInputParams(recordParam->videoHeight, recordParam->videoWidth, recordParam->pixelFormat);
     mYuvConvertor->setCrop(0, 0, 0, 0);
-    mYuvConvertor->setScale(0, 0);
     mYuvConvertor->setRotate(libyuv::kRotate90);
-    mYuvConvertor->setMirror(false);
 
     int ret = mYuvConvertor->prepare();
-    LOGE("MediaRecorder yuvConvertor.prepare() ret: %d", ret);
     if (ret < 0) {
+        LOGE("mYuvConvertor prepare fail,  ret: %d", ret);
         delete mYuvConvertor;
         mYuvConvertor = nullptr;
     }
 
     mediaMuxer->addEncodeOptions("preset", "veryfast");
-    //mediaMuxer->addEncodeOptions("tune", "zerolatency");
-    //mediaMuxer->addEncodeOptions("profile", "baseline");
-    //mediaMuxer->setQuality(recordParam->videoQuality > 0 ? recordParam->videoQuality : 29);
     mediaMuxer->setOutputPath(recordParam->server);
 
     ret = mediaMuxer->prepare();
     if (ret < 0) {
         //release();
-        LOGE("Record is not ready...");
+        LOGE("MediaRecorder is not ready, mediaMuxer prepare fail, ret: %d", ret);
         return ;
     }
-    LOGE("Record is ready...");
+    LOGE("MediaRecorder is ready");
 }
 
 // 开始录制
 void MediaRecorder::startRecord() {
-    mMutex.lock();
     mAbortRequest = false;
     mStartRequest = true;
     mExit = false;
-    mCondition.signal();
-    mMutex.unlock();
 
-    LOGE("MediaRecorder  startRecord  ====  %s", mRecordThread==nullptr?"mRecordThread is null":"mRecordThread is not null");
-
-    if(mRecordThread != nullptr) {
-        mRecordThread = nullptr;
-    }
-
-    if (mRecordThread == nullptr) {
-        mRecordThread = new Thread(this);
-        mRecordThread->start();
-        //mRecordThread->detach();
-    }
+    mRecordThread = new Thread(this);
+    mRecordThread->start();
 }
 
 // 停止录制
@@ -89,13 +70,12 @@ void MediaRecorder::stopRecord() {
     mMutex.unlock();
 
     if (mRecordThread != nullptr) {
-        //mRecordThread->join();
         delete mRecordThread;
         mRecordThread = nullptr;
     }
 
     delete mediaMuxer;
-    mediaMuxer = NULL;
+    mediaMuxer = nullptr;
 }
 
 // 是否正在录制
@@ -110,21 +90,21 @@ int MediaRecorder::recordFrame(AVMediaData *data) {
         delete data;
         return -1;
     }
-
-    if(mFrameQueue != nullptr) {
-        mFrameQueue->push(data);
-    } else {
+    if(mVideoQueue->size() <= 30 && data->type == MediaVideo) {
+        mVideoQueue->push(data);
+    }
+    else if(mAudioQueue->size() <= 30 && data->type == MediaAudio) {
+        mAudioQueue->push(data);
+    }
+    else {
         delete data;
     }
-    return 0;
+    return 1;
 }
 
 void MediaRecorder::run() {
 
     mExit = false;
-
-    /* select the stream to encode */
-    int encode_video = 1, encode_audio = 1;
 
     while (!mStartRequest) {
         if (mAbortRequest) { // 停止请求则直接退出
@@ -134,60 +114,53 @@ void MediaRecorder::run() {
         }
     }
 
+    /**
+     * 选择视频还是音频编码
+     * */
+    int encode_video = 1, encode_audio = 1;
+
     if (!mAbortRequest && mStartRequest)
     {
         while (!mAbortRequest && mStartRequest)
         {
-            if (!mFrameQueue->empty())
+            // 视频编码
+            if (encode_video &&
+                (!encode_audio || mediaMuxer->encodeVideoNow()))
             {
-                auto data = mFrameQueue->pop();
-                if (!data) {
+                if(mVideoQueue->empty()) {
                     continue;
                 }
-
-                //LOGE("MediaRecorder  run   encode_video: %d, encode_audio: %d", encode_video, encode_audio);
-
-                if (encode_video &&
-                    (!encode_audio || mediaMuxer->encodeVideoNow()))
-                {
-                    if(data->getType() == MediaAudio) {
-                        delete data;
-                        continue;
-                    }
-                    if (mYuvConvertor->convert(data) < 0) {
-                        LOGE("Failed to convert video data to yuv420");
-                        delete data;
-                        continue;
-                    }
-                    encode_video = !mediaMuxer->encodeMediaData(data);
+                auto data = mVideoQueue->pop();
+                if (mYuvConvertor->convert(data) < 0) {
+                    LOGE("Failed to convert video data to yuv420");
+                    delete data;
+                    continue;
                 }
-                else {
-                    //LOGE("MediaRecorder  encode audio   %s", data->getType()==MediaVideo?"MediaVideo":"MediaAudio");
-                    if(data->getType() == MediaVideo) {
-                        delete data;
-                        continue;
-                    }
-                    encode_audio = !mediaMuxer->encodeMediaData(data);
+                encode_video = !mediaMuxer->encodeMediaData(data);
+            }
+            // 音频编码
+            else {
+                if(mAudioQueue->empty()) {
+                    continue;
                 }
-
-                // 释放资源
-                delete data;
+                auto data = mAudioQueue->pop();
+                encode_audio = !mediaMuxer->encodeMediaData(data);
             }
         }
 
-        LOGE("MediaRecorder  run  after stop record, mFrameQueue->size(): %d", mFrameQueue->size());
+        LOGE("MediaRecorder  run  after stop record, mAudioQueue.size: %d, mVideoQueue.size: %d", mAudioQueue->size(), mVideoQueue->size());
+
+        mediaMuxer->flush();
 
         mediaMuxer->stop();
-
     }
 
     mediaMuxer->release();
 
     mCondition.signal();
 
-    LOGE("MediaRecorder  loop  run   end ===== ");
+    LOGE("MediaRecorder  run   end  ===== ");
 }
-
 
 void MediaRecorder::release() {
     stopRecord();
@@ -197,9 +170,14 @@ void MediaRecorder::release() {
     }
     mMutex.unlock();
 
-    if (mFrameQueue != nullptr) {
-        delete mFrameQueue;
-        mFrameQueue = nullptr;
+    if(mVideoQueue != nullptr) {
+        delete mVideoQueue;
+        mVideoQueue = nullptr;
+    }
+
+    if(mAudioQueue != nullptr) {
+        delete mAudioQueue;
+        mAudioQueue = nullptr;
     }
 
     if (mRecordThread != nullptr) {

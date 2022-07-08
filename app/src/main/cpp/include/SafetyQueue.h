@@ -1,7 +1,3 @@
-//
-// Created by CainHuang on 2019/7/28.
-//
-
 #ifndef SAFETYQUEUE_H
 #define SAFETYQUEUE_H
 
